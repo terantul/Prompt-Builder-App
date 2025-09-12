@@ -11,20 +11,22 @@ TAGS_DIR = "tags"
 
 class PromptBuilderApp:
     def __init__(self, root):
-        self.root = root
-        self.root.title("Конструктор промтів (для людей)")
-        self.root.geometry("800x600")
-
-        # Меню
-        self.create_menu()
-
         # Дані конфігурації для API
         self.api_config = {"api_url": "", "model_name": ""}
 
         # Завантажуємо конфіг, якщо є
         self.load_config()
+
+        self.load_language()
         # Завантажуємо теги
         self.load_tags()
+
+        self.root = root
+        self.root.title(self.get("ui", "title", "Constructor of promts for image generation"))
+        self.root.geometry("800x600")
+
+        # Меню
+        self.create_menu()
 
         self.listboxes = {}
         self.selected_tags = {group: [] for group in self.prompt_groups}
@@ -36,52 +38,119 @@ class PromptBuilderApp:
     def create_menu(self):
         menubar = tk.Menu(self.root)
         info_menu = tk.Menu(menubar, tearoff=0)
-        info_menu.add_command(label="Settings", command=self.open_settings)
-        info_menu.add_command(label="About", command=self.show_about)
-        menubar.add_cascade(label="Info", menu=info_menu)
+        info_menu.add_command(label=self.get("menu", "settings", "Settings"), command=self.open_settings)
+        info_menu.add_command(label=self.get("menu", "about", "About"), command=self.show_about)
+        menubar.add_cascade(label=self.get("menu", "info", "Info"), menu=info_menu)
         self.root.config(menu=menubar)
 
     def show_about(self):
         messagebox.showinfo(
-            "About",
-            "Конструктор промтів для генерації зображень людей\n"
-            "Created by DTerantul & ChatGPT"
+            self.get("menu", "about", "About"),
+            self.get("messages", "show_about", "Prompt constructor for image generation\n") +
+            self.get("info", "created_by", "Created by DTerantul & ChatGPT")
         )
+
+    # =================== MULTI-LANGUAGE GET ===================
+    def get(self, section, key, default=None):
+        print(section, key, default)
+        """
+        Повертає перекладений рядок з lang_data.
+        Якщо ключ не знайдено — повертає default або key.
+        """
+        if not hasattr(self, "lang_data"):
+            return default if default is not None else key
+
+        return self.lang_data.get(section, {}).get(key, default if default is not None else key)
 
     def open_settings(self):
         settings_win = tk.Toplevel(self.root)
-        settings_win.title("Settings")
-        settings_win.geometry("400x200")
+        settings_win.title(self.get("ui", "settings", "Settings"))
+        settings_win.geometry("400x250")
         settings_win.grab_set()  # модальне
 
-        tk.Label(settings_win, text="API URL:").pack(pady=5)
+        # --- API URL ---
+        tk.Label(settings_win, text=self.get("api_url", "API URL:")).pack(pady=5)
         api_entry = tk.Entry(settings_win, width=50)
         api_entry.pack(pady=5)
         api_entry.insert(0, self.api_config.get("api_url", ""))
 
-        tk.Label(settings_win, text="Model Name:").pack(pady=5)
+        # --- Model Name ---
+        tk.Label(settings_win, text=self.get("model_name", "Model Name:")).pack(pady=5)
         model_entry = tk.Entry(settings_win, width=50)
         model_entry.pack(pady=5)
         model_entry.insert(0, self.api_config.get("model_name", ""))
 
+        # --- Interface Language ---
+        tk.Label(settings_win, text=self.get("interface_language", "Interface Language:")).pack(pady=5)
+
+        # Зчитуємо список мов з директорії lang
+        available_langs = ["en"]
+        if os.path.exists("lang") and os.path.isdir("lang"):
+            for f in os.listdir("lang"):
+                if f.endswith(".json"):
+                    lang_code = os.path.splitext(f)[0]
+                    if lang_code not in available_langs:
+                        available_langs.append(lang_code)
+
+        interface_lang_var = tk.StringVar()
+        interface_lang_var.set(getattr(self, "interface_lang", "en"))
+
+        lang_menu = ttk.OptionMenu(settings_win, interface_lang_var, interface_lang_var.get(), *available_langs)
+        lang_menu.pack(pady=5)
+
         def save_settings():
             self.api_config["api_url"] = api_entry.get()
             self.api_config["model_name"] = model_entry.get()
+            self.api_config["interface_lang"] = interface_lang_var.get()
             with open(CONFIG_FILE, "w", encoding="utf-8") as f:
                 json.dump(self.api_config, f, indent=4)
-            messagebox.showinfo("Settings", "Налаштування збережено!")
+
+            # Перезавантажуємо мову інтерфейсу
+            self.interface_lang = interface_lang_var.get()
+            self.load_language()
+
+            messagebox.showinfo(self.get("settings_saved", "Settings saved!"),
+                                self.get("settings_saved_msg", "Settings have been saved successfully."))
             settings_win.destroy()
 
-        save_btn = ttk.Button(settings_win, text="Save", command=save_settings)
+        save_btn = ttk.Button(settings_win, text=self.get("save", "Save"), command=save_settings)
         save_btn.pack(pady=10)
 
     def load_config(self):
         if os.path.exists(CONFIG_FILE):
             try:
                 with open(CONFIG_FILE, "r", encoding="utf-8") as f:
-                    self.api_config = json.load(f)
+                    cfg = json.load(f)
+                    self.api_config = {
+                        "api_url": cfg.get("api_url", ""),
+                        "model_name": cfg.get("model_name", "")
+                    }
+                    self.interface_lang = cfg.get("interface_lang", "en")
             except Exception as e:
                 messagebox.showwarning("Warning", f"Не вдалося завантажити config.json:\n{e}")
+                self.api_config = {"api_url": "", "model_name": ""}
+                self.interface_lang = "en"
+        else:
+            self.api_config = {"api_url": "", "model_name": ""}
+            self.interface_lang = "en"
+
+    def load_language(self):
+        if self.interface_lang == "en":
+            self.lang_data = {}
+            return
+
+        lang_file = os.path.join("lang", f"{self.interface_lang}.json")
+        if os.path.exists(lang_file):
+            try:
+                with open(lang_file, "r", encoding="utf-8") as f:
+                    self.lang_data = json.load(f)
+            except Exception as e:
+                messagebox.showwarning("Warning", f"Не вдалося завантажити файл мови {lang_file}:\n{e}")
+                self.lang_data = {}
+        else:
+            messagebox.showwarning("Warning", f"Файл мови {lang_file} не знайдено!")
+            self.lang_data = {}
+
 
     def load_tags(self):
         # 1. Завантажуємо порядок груп
@@ -128,8 +197,6 @@ class PromptBuilderApp:
     def create_ui(self):
         self.notebook = ttk.Notebook(self.root)
         self.notebook.pack(fill="both", expand=True)
-
-
 
         for group, tags in self.prompt_groups.items():
             frame = ttk.Frame(self.notebook)

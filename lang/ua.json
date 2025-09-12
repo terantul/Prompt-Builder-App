@@ -1,0 +1,39 @@
+{
+  "ui": {
+    "title": "Генератор підказок для ШІ",
+    "settings": "Налаштування",
+    "select_tags": "Оберіть теги",
+    "search_placeholder": "Пошук тегів",
+    "apply": "Застосувати",
+    "reset": "Скинути",
+    "loading": "Завантаження...",
+    "no_tags": "Теги не знайдені",
+    "all_tags": "Всі теги"
+  },
+  "menu": {
+    "info": "Інформація",
+    "settings": "Налаштування",
+    "about": "Про програму"
+  },
+  "messages": {
+    "select_tag": "Оберіть хоча б один тег!",
+    "config_error": "Не вдалося завантажити конфіг",
+    "tags_dir_missing": "Директорія тегів не знайдена!",
+    "tags_dir_empty": "Директорія тегів порожня!",
+    "show_about": "Конструктор промтів для генерації зображень\n"
+  },
+  "info": {
+    "created_by": "Створено DTerantul & ChatGPT "
+  },
+  "groups": {
+    "Subject": "Об'єкт",
+    "Style": "Стиль",
+    "Details": "Деталі",
+    "Anatomy": "Анатомія",
+    "Actions": "Дії",
+    "Composition": "Композиція",
+    "Quality": "Якість",
+    "ColorLighting": "Світло/Кольори",
+    "Context": "Контекст"
+  }
+}
