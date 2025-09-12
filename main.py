@@ -6,6 +6,8 @@ import requests
 import threading
 
 CONFIG_FILE = "config.json"
+ORDER_TAGS_FILE = "tags_order.json"
+TAGS_DIR = "tags"
 
 class PromptBuilderApp:
     def __init__(self, root):
@@ -21,60 +23,8 @@ class PromptBuilderApp:
 
         # Завантажуємо конфіг, якщо є
         self.load_config()
-
-        # Групи з тегами
-        self.prompt_groups = {
-            "Subject (Об'єкт)": [
-                "young woman", "young man", "old man", "teenager", "child", "muscular man",
-                "elegant lady", "cyborg human", "fantasy elf", "samurai warrior"
-            ],
-            "Style (Стиль)": [
-                "digital painting", "photorealistic", "realistic photo", "oil on canvas",
-                "anime style", "pixar style", "concept art", "cyberpunk art"
-            ],
-            "Details (Деталі)": [
-                "freckles", "blue eyes", "green eyes", "tattoos",
-                "armored suit", "casual clothes", "glowing sword",
-                "intricate jewelry", "symmetrical face", "detailed face",
-                "hand 5 fingers", "detailed hands", "blonde hair", "brunette hair", "red hair",
-                "short hair", "long hair", "curly hair", "straight hair", "bald head"
-            ],
-            "Anatomy (Анатомія)": [
-                "well-proportioned body", "muscular build", "slim figure",
-                "athletic physique", "broad shoulders", "narrow waist",
-                "curvy", "voluptuous", "hourglass figure", "petite", "slender"
-            ],
-            "Actions (Дії)": [
-                "standing", "running", "walking ", "jumping", "sitting", "lies",
-                "lies on his back", "lies on her side", "lies on his stomach", "crouching",
-                "flying", "dancing",
-                "holding a sword", "casting a spell", "looking at the horizon"
-            ],
-            "NSFW (18+)": [
-                "erotic", "porno", "half-dressed", "half-undressed", "nude", "naked", "bare-chested", "lingerie",
-                "underwear", "bikini", "sexy pose", "sensual", "provocative",
-                "breast", "boobs", "ass", "pussy", "vagina", "nipples"
-
-            ],
-            "Composition (Композиція)": [
-                "portrait shot", "full body shot", "from head to toe", "feet visible", "close-up", "low angle",
-                "high angle", "rule of thirds", "dynamic pose", "wide shot", "rear view", "side view",
-                "over-the-shoulder"
-            ],
-            "Quality (Якість)": [
-                "masterpiece", "best quality", "highly detailed",
-                "8k resolution", "sharp focus", "ultra detailed"
-            ],
-            "Color/Lighting (Світло/Кольори)": [
-                "cinematic lighting", "golden hour", "dramatic shadows",
-                "soft light", "neon lights", "monochrome", "vibrant colors"
-            ],
-            "Context (Контекст)": [
-                "in a futuristic city", "on a snowy mountain",
-                "inside a cozy tavern", "in a dark forest",
-                "on a beach", "in outer space", "in a battlefield"
-            ]
-        }
+        # Завантажуємо теги
+        self.load_tags()
 
         self.listboxes = {}
         self.selected_tags = {group: [] for group in self.prompt_groups}
@@ -133,10 +83,53 @@ class PromptBuilderApp:
             except Exception as e:
                 messagebox.showwarning("Warning", f"Не вдалося завантажити config.json:\n{e}")
 
+    def load_tags(self):
+        # 1. Завантажуємо порядок груп
+        self.tags_order = []
+        if os.path.exists(ORDER_TAGS_FILE):
+            try:
+                with open(ORDER_TAGS_FILE, "r", encoding="utf-8") as f:
+                    self.tags_order = json.load(f)
+            except Exception as e:
+                messagebox.showwarning("Warning", f"Не вдалося завантажити '{ORDER_TAGS_FILE}':\n{e}")
+
+        # 2. Перевірка директорії тегів
+        if not os.path.exists(TAGS_DIR) or not os.path.isdir(TAGS_DIR):
+            messagebox.showwarning("Warning", f"Директорія '{TAGS_DIR}' не знайдена!")
+            self.prompt_groups = {}
+            return
+
+        # 3. Формуємо словник груп тегів згідно tags_order
+        self.prompt_groups = {}
+        for group_name in self.tags_order:
+            file_path = os.path.join(TAGS_DIR, f"{group_name}.json")
+            if os.path.exists(file_path):
+                try:
+                    with open(file_path, "r", encoding="utf-8") as f:
+                        tags = json.load(f)
+                        if isinstance(tags, list):
+                            self.prompt_groups[group_name] = tags
+                        else:
+                            messagebox.showwarning(
+                                "Warning",
+                                f"Файл '{group_name}.json' має неправильний формат. Очікується список тегів."
+                            )
+                except Exception as e:
+                    messagebox.showwarning("Warning", f"Не вдалося завантажити файл '{group_name}.json':\n{e}")
+            else:
+                messagebox.showwarning("Warning", f"Файл тегів для групи '{group_name}' не знайдено в '{TAGS_DIR}'!")
+
+        # 4. Якщо не завантажено жодної групи
+        if not self.prompt_groups:
+            messagebox.showwarning("Warning", "Не вдалося завантажити жодну групу тегів.")
+
+
     # =================== PROMPT BUILDER UI ===================
     def create_ui(self):
         self.notebook = ttk.Notebook(self.root)
         self.notebook.pack(fill="both", expand=True)
+
+
 
         for group, tags in self.prompt_groups.items():
             frame = ttk.Frame(self.notebook)
