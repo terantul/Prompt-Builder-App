@@ -27,22 +27,25 @@
 
 1. Clone the repository:
 <pre>
-git clone <URL>
-cd <repo>
+git clone https://github.com/terantul/Prompt-Builder-App.git
+cd Prompt-Builder-App
+</pre>
 Create a virtual environment (recommended):
-
+<pre>
 python -m venv venv
 # Linux/Mac
 source venv/bin/activate
 # Windows
 venv\Scripts\activate
+
+</pre>
 Install dependencies:
-
+<pre>
 pip install -r requirements.txt
-
+</pre>
 Usage
 Run the application:
-
+<pre>
 python main.py
 </pre>
 
