@@ -1,11 +1,14 @@
 [
     "Subject",
-    "Style",
-    "Details",
     "Anatomy",
     "Actions",
+    "Style",
     "Composition",
-    "Quality",
     "ColorLighting",
-    "Context"
+    "MoodAtmosphere",
+    "Context",
+    "Details",
+    "Quality",
+    "ArtistReference",
+    "NegativePrompt"
 ]
