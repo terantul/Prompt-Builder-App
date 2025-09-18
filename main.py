@@ -14,8 +14,15 @@ class PromptBuilderApp:
     def __init__(self, master):
         self.api_config = {"api_url": "", "model_name": ""}
         self.interface_lang = "en"
+        self.tags_order = []
+        self.prompt_groups = {}
+        self.lang_data = {}
+        self.i18n_widgets = {}
+        self.notebook = None
+        self.generate_btn = None
+        self.improve_btn = None
+        self.result_text = None
         self.load_config()
-
         self.load_language()
         self.load_tags()
 
@@ -25,20 +32,11 @@ class PromptBuilderApp:
 
         self.create_menu()
 
-        self.listboxes = {}
+        self.tag_list_boxes = {}
         self.selected_tags = {group: [] for group in self.prompt_groups}
         self._last_action_group = None
 
         self.create_ui()
-
-    def show_info_no_sound(self, title, message, parent=None):
-        win = tk.Toplevel(parent)
-        win.title(title)
-        win.geometry("320x150")
-        win.grab_set()
-
-        tk.Label(win, text=message, wraplength=300, justify="center").pack(pady=20)
-        ttk.Button(win, text="OK", command=win.destroy).pack(pady=10)
 
     # =================== MENU ===================
     def create_menu(self):
@@ -107,8 +105,8 @@ class PromptBuilderApp:
             self.api_config["api_url"] = api_entry.get()
             self.api_config["model_name"] = model_entry.get()
             self.api_config["interface_lang"] = interface_lang_var.get()
-            with open(CONFIG_FILE, "w", encoding="utf-8") as f:
-                json.dump(self.api_config, f, indent=4)
+            with open(CONFIG_FILE, "w", encoding="utf-8") as config_file:
+                json.dump(self.api_config, config_file, indent=4)
 
             # Reload the interface language
             self.interface_lang = interface_lang_var.get()
@@ -164,7 +162,6 @@ class PromptBuilderApp:
             self.lang_data = {}
 
     def load_tags(self):
-        self.tags_order = []
         if os.path.exists(ORDER_TAGS_FILE):
             try:
                 with open(ORDER_TAGS_FILE, "r", encoding="utf-8") as f:
@@ -183,7 +180,6 @@ class PromptBuilderApp:
             self.prompt_groups = {}
             return
 
-        self.prompt_groups = {}
         for group_name in self.tags_order:
             file_path = os.path.join(TAGS_DIR, f"{group_name}.json")
             if os.path.exists(file_path):
@@ -207,7 +203,7 @@ class PromptBuilderApp:
                         .replace("{error}", str(e)),
                     )
             else:
-                self.show_info_no_sound(
+                messagebox.showinfo(
                     self.get("messages", "warning", "Warning"),
                     self.get("messages", "tags_file_missing", "Tags file missing for group {group}")
                     .replace("{group}", group_name),
@@ -221,8 +217,6 @@ class PromptBuilderApp:
 
     # =================== PROMPT BUILDER UI ===================
     def create_ui(self):
-        self.i18n_widgets = {}
-
         self.notebook = ttk.Notebook(self.root)
         self.notebook.pack(fill="both", expand=True)
 
@@ -250,7 +244,7 @@ class PromptBuilderApp:
 
             listbox.bind("<<ListboxSelect>>", lambda e, g=group: self.update_selection(g))
 
-            self.listboxes[group] = listbox
+            self.tag_list_boxes[group] = listbox
 
         self.generate_btn = ttk.Button(
             self.root, text=self.get("ui", "generate_btn", "Generate prompt"), command=self.generate_prompt
@@ -276,11 +270,8 @@ class PromptBuilderApp:
         for idx, (group, _) in enumerate(self.prompt_groups.items()):
             self.notebook.tab(idx, text=self.get("groups", group, group))
 
-    def on_listbox_click(self, event, group):
-        self._last_action_group = group
-
     def update_selection(self, group):
-        listbox = self.listboxes[group]
+        listbox = self.tag_list_boxes[group]
         cur_selection = [listbox.get(i) for i in listbox.curselection()]
 
         if not cur_selection and self._last_action_group != group:
